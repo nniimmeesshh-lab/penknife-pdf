@@ -7,10 +7,16 @@ and rearrange pages, then save. Your files never leave your computer: there is n
 
 > "Penknife" is a working name. Rename it freely (search for `Penknife` in `src/`).
 
-## Download
+## Use it
 
-1. Go to the **Releases** page of this repository and download `penknife-pdf.html`.
-2. Double-click it. It opens in your browser and works offline. There is nothing to install.
+**Online, nothing to install:** https://nniimmeesshh-lab.github.io/penknife-pdf/
+
+Your PDF stays on your computer. The page loads once and then works entirely locally.
+
+**Download for offline use:**
+
+1. Open the **Releases** page of this repository and download `penknife-pdf.html`. Or open the online version above and press `Ctrl+S` (`Cmd+S` on a Mac) to save the page.
+2. Double-click the file. It opens in your browser and works without an internet connection.
 3. Choose **Open**, pick a PDF, edit, then **Save PDF**. The edited copy downloads as `<name>-edited.pdf`; your original is untouched.
 
 Works in current Chrome, Edge, Firefox and Safari on Windows, macOS, Linux and Chromebooks.
@@ -32,7 +38,7 @@ Keyboard shortcuts: `V` select, `E` edit text, `T` add text, `H` highlight, `P` 
 
 ## Build it yourself
 
-Needs Node.js 18 or newer. The build produces the same single self-contained HTML file as the release.
+Needs Node.js 18 or newer. The build writes `dist/penknife-pdf.html` and a copy at `docs/index.html`, which is what GitHub Pages serves.
 
 ```
 npm install

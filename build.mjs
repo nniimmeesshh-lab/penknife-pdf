@@ -74,6 +74,9 @@ ${body}
 ${scripts}
 </body></html>`;
 writeFileSync(join(root, 'dist/penknife-pdf.html'), standalone);
+// Same file in docs/ so GitHub Pages can serve it (Settings > Pages > Deploy from branch > main > /docs).
+mkdirSync(join(root, 'docs'), { recursive: true });
+writeFileSync(join(root, 'docs/index.html'), standalone);
 
 // 2) Fragment for hosts that wrap the page in their own skeleton (used for the hosted copy).
 const fragment = `<title>Penknife PDF</title>
