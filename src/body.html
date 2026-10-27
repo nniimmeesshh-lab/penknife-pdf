@@ -1,0 +1,93 @@
+<div id="app">
+  <header class="bar" id="topbar">
+    <div class="brand" title="Penknife PDF">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17 15 5l4 1 1 4L8 22z"/><path d="m3 17 4 4"/><path d="M12 8l4 4"/></svg>
+      <span>Penknife <small>PDF</small></span>
+    </div>
+    <button class="btn" id="b-open" title="Open a PDF (Ctrl+O)"><svg data-icon="open"></svg>Open</button>
+    <button class="btn primary" id="b-save" title="Download the edited PDF (Ctrl+S)" disabled><svg data-icon="save"></svg>Save PDF</button>
+    <span class="sep"></span>
+    <button class="btn icon" id="b-undo" title="Undo (Ctrl+Z)" disabled><svg data-icon="undo"></svg></button>
+    <button class="btn icon" id="b-redo" title="Redo (Ctrl+Shift+Z)" disabled><svg data-icon="redo"></svg></button>
+    <span class="sep"></span>
+    <button class="btn icon" id="b-rail" title="Show or hide page thumbnails"><svg data-icon="panel"></svg></button>
+    <button class="btn icon" id="b-zout" title="Zoom out (-)"><svg data-icon="minus"></svg></button>
+    <span class="readout" id="zoomread">125%</span>
+    <button class="btn icon" id="b-zin" title="Zoom in (+)"><svg data-icon="plus"></svg></button>
+    <button class="btn icon" id="b-fit" title="Fit page width"><svg data-icon="fit"></svg></button>
+    <span class="sep"></span>
+    <span class="pgbox"><button class="btn icon" id="b-prev" title="Previous page"><svg data-icon="up"></svg></button>
+      <input id="pgin" type="text" inputmode="numeric" value="1" aria-label="Page number" /> / <span id="pgtot">0</span>
+      <button class="btn icon" id="b-next" title="Next page"><svg data-icon="down"></svg></button></span>
+    <span class="spacer"></span>
+    <span class="filename" id="fname"></span><span class="dirty-dot" id="dirty" hidden title="Unsaved changes"></span>
+  </header>
+
+  <nav class="bar tools" id="toolbar" aria-label="Tools">
+    <button class="tool on" data-tool="select" data-key="V" title="Select, move, and copy text (V)"><svg data-icon="cursor"></svg><span>Select</span></button>
+    <button class="tool" data-tool="edit" data-key="E" title="Click existing text to change it (E)"><svg data-icon="edittext"></svg><span>Edit text</span></button>
+    <span class="sep"></span>
+    <button class="tool" data-tool="text" data-key="T" title="Add a text box (T)"><svg data-icon="text"></svg><span>Add text</span></button>
+    <button class="tool" data-tool="highlight" data-key="H" title="Highlight (H)"><svg data-icon="marker"></svg><span>Highlight</span></button>
+    <button class="tool" data-tool="pen" data-key="P" title="Draw freehand (P)"><svg data-icon="pen"></svg><span>Draw</span></button>
+    <button class="tool" data-tool="rect" data-key="R" title="Rectangle (R)"><svg data-icon="rect"></svg><span>Rectangle</span></button>
+    <button class="tool" data-tool="ellipse" data-key="O" title="Ellipse (O)"><svg data-icon="ellipse"></svg><span>Ellipse</span></button>
+    <button class="tool" data-tool="line" data-key="L" title="Line or arrow (L)"><svg data-icon="line"></svg><span>Line</span></button>
+    <button class="tool" data-tool="cover" data-key="C" title="Cover content with a white box (C). Hides it visually; it does not erase the data underneath."><svg data-icon="eraser"></svg><span>Cover</span></button>
+    <span class="sep"></span>
+    <button class="tool" id="t-image" title="Insert an image (I)"><svg data-icon="image"></svg><span>Image</span></button>
+    <button class="tool" id="t-sign" title="Draw and place a signature (S)"><svg data-icon="sign"></svg><span>Sign</span></button>
+    <span class="spacer"></span>
+    <button class="btn" id="b-delete" title="Delete selected (Del)" disabled><svg data-icon="trash"></svg>Delete</button>
+  </nav>
+
+  <div class="bar props" id="props" aria-label="Tool options">
+    <span class="hint" id="p-hint"></span>
+    <span class="grp" data-for="text rect ellipse line pen"><span class="lbl">Colour</span>
+      <span class="swatches" id="p-swatches"></span><input type="color" id="p-color" aria-label="Custom colour" /></span>
+    <span class="grp" data-for="highlight"><span class="lbl">Colour</span><span class="swatches" id="p-hl"></span></span>
+    <span class="grp" data-for="rect ellipse"><label><input type="checkbox" id="p-fillon" /> Fill</label><input type="color" id="p-fill" aria-label="Fill colour" /></span>
+    <span class="grp" data-for="rect ellipse line pen"><label for="p-width">Width</label>
+      <select id="p-width"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option><option>8</option><option>12</option></select></span>
+    <span class="grp" data-for="line"><label><input type="checkbox" id="p-arrow" /> Arrow</label></span>
+    <span class="grp" data-for="text">
+      <select id="p-family" aria-label="Font"><option value="Helvetica">Sans</option><option value="Times">Serif</option><option value="Courier">Mono</option></select>
+      <input type="number" id="p-size" min="4" max="200" step="1" aria-label="Font size" />
+      <span class="seg"><button id="p-bold" title="Bold"><b>B</b></button><button id="p-italic" title="Italic"><i>I</i></button></span></span>
+  </div>
+
+  <div id="main" class="">
+    <aside id="rail" aria-label="Pages">
+      <div class="rail-actions">
+        <button class="btn outline" id="b-blank" title="Insert a blank page after the current page"><svg data-icon="pageplus"></svg>Blank</button>
+        <button class="btn outline" id="b-merge" title="Insert the pages of another PDF after the current page"><svg data-icon="merge"></svg>Add PDF</button>
+      </div>
+      <div id="thumbs"></div>
+    </aside>
+    <div id="scroller">
+      <div id="pages" class="tool-select"></div>
+      <div id="empty">
+        <div class="drop" id="drop">
+          <h1>Open a PDF to edit it</h1>
+          <p>Change existing text, add your own, highlight, draw, sign, and rearrange pages. Everything happens in this tab. Your file is never uploaded.</p>
+          <div class="row">
+            <button class="btn primary" id="e-open"><svg data-icon="open"></svg>Choose a PDF</button>
+            <button class="btn outline" id="e-sample">Try a sample document</button>
+          </div>
+          <ul>
+            <li>Edit existing text in place</li>
+            <li>Highlight, draw, shapes</li>
+            <li>Sign with your mouse or trackpad</li>
+            <li>Rotate, reorder, delete, merge pages</li>
+          </ul>
+          <div class="fine">Or drop a PDF anywhere on this window.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<input type="file" id="f-pdf" accept="application/pdf,.pdf" hidden />
+<input type="file" id="f-merge" accept="application/pdf,.pdf" hidden />
+<input type="file" id="f-img" accept="image/*" hidden />
+<div id="toasts" role="status" aria-live="polite"></div>
+<div id="modal-root" hidden></div>
