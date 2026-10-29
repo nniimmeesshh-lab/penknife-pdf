@@ -304,6 +304,8 @@ input[type="color"] { width: 28px; height: 24px; padding: 0; border: 1px solid v
     <span class="hint" id="p-hint"></span>
     <span class="grp" data-for="text rect ellipse line pen"><span class="lbl">Colour</span>
       <span class="swatches" id="p-swatches"></span><input type="color" id="p-color" aria-label="Custom colour" /></span>
+    <span class="grp" data-for="cover"><span class="lbl">Cover colour</span><input type="color" id="p-cover" aria-label="Cover colour" /><button class="btn outline" id="p-match" title="Pick up the page colour around this box">Match page</button></span>
+    <span class="grp" id="p-bg" data-for="text" hidden><span class="lbl">Background</span><input type="color" id="p-bgc" aria-label="Background behind the edited text" /><button class="btn outline" id="p-bgmatch" title="Pick up the page colour around this line">Match page</button></span>
     <span class="grp" data-for="highlight"><span class="lbl">Colour</span><span class="swatches" id="p-hl"></span></span>
     <span class="grp" data-for="rect ellipse"><label><input type="checkbox" id="p-fillon" /> Fill</label><input type="color" id="p-fill" aria-label="Fill colour" /></span>
     <span class="grp" data-for="rect ellipse line pen"><label for="p-width">Width</label>
@@ -1237,6 +1239,7 @@ function onPointerUp() {
     const a = S.tmp && S.tmp.annot;
     S.tmp = null;
     if (a && bboxBigEnough(a)) {
+      if (a.type === 'cover') matchPageColour(p, a);
       addAnnot(p, a, { select: !STICKY_TOOLS.has(d.tool) });
       if (!STICKY_TOOLS.has(d.tool)) setTool('select'), select(p.id, a.id);
     } else renderOverlay(p);
@@ -1347,6 +1350,66 @@ function endTextEdit() {
   updateProps();
 }
 
+/* ---- sampling the page's own colours (so covers blend in) ---- */
+const toHex = (c) => '#' + [c[0], c[1], c[2]].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+function renderedCanvas(p) {
+  const e = S.els.get(p.id);
+  return e && e.canvas.width ? e.canvas : null;
+}
+/* Most common colour in a thin ring just outside rect r (page points). Returns [r,g,b] or null. */
+function sampleBackground(p, r, pad = 2.5) {
+  const cv = renderedCanvas(p);
+  if (!cv) return null;
+  const k = cv.width / p.w;
+  const grow = pad + 2.5;
+  const x0 = Math.max(0, Math.floor((r.x - grow) * k)), y0 = Math.max(0, Math.floor((r.y - grow) * k));
+  const x1 = Math.min(cv.width, Math.ceil((r.x + r.w + grow) * k)), y1 = Math.min(cv.height, Math.ceil((r.y + r.h + grow) * k));
+  if (x1 - x0 < 1 || y1 - y0 < 1) return null;
+  const img = cv.getContext('2d').getImageData(x0, y0, x1 - x0, y1 - y0);
+  const buckets = new Map();
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const px = (x + 0.5) / k, py = (y + 0.5) / k;
+      const dx = Math.max(r.x - px, 0, px - (r.x + r.w)), dy = Math.max(r.y - py, 0, py - (r.y + r.h));
+      const d = Math.hypot(dx, dy);
+      if (d < pad || d > pad + 2.5) continue;
+      const i = ((y - y0) * img.width + (x - x0)) * 4;
+      const R = img.data[i], G = img.data[i + 1], B = img.data[i + 2];
+      const key = (R >> 3) << 10 | (G >> 3) << 5 | (B >> 3);
+      const b = buckets.get(key) || { n: 0, R: 0, G: 0, B: 0 };
+      b.n++; b.R += R; b.G += G; b.B += B;
+      buckets.set(key, b);
+    }
+  }
+  let best = null;
+  for (const b of buckets.values()) if (!best || b.n > best.n) best = b;
+  return best ? [best.R / best.n, best.G / best.n, best.B / best.n] : null;
+}
+/* Darkest/most contrasting ink inside rect r compared with background bg. Returns [r,g,b] or null. */
+function sampleInk(p, r, bg) {
+  const cv = renderedCanvas(p);
+  if (!cv || !bg) return null;
+  const k = cv.width / p.w;
+  const x0 = Math.max(0, Math.floor(r.x * k)), y0 = Math.max(0, Math.floor(r.y * k));
+  const x1 = Math.min(cv.width, Math.ceil((r.x + r.w) * k)), y1 = Math.min(cv.height, Math.ceil((r.y + r.h) * k));
+  if (x1 - x0 < 1 || y1 - y0 < 1) return null;
+  const img = cv.getContext('2d').getImageData(x0, y0, x1 - x0, y1 - y0).data;
+  let max = 0;
+  const dist = (i) => Math.abs(img[i] - bg[0]) + Math.abs(img[i + 1] - bg[1]) + Math.abs(img[i + 2] - bg[2]);
+  for (let i = 0; i < img.length; i += 4) max = Math.max(max, dist(i));
+  if (max < 150) return null;
+  let n = 0, R = 0, G = 0, B = 0;
+  for (let i = 0; i < img.length; i += 4) if (dist(i) >= max * 0.85) { n++; R += img[i]; G += img[i + 1]; B += img[i + 2]; }
+  return n ? [R / n, G / n, B / n] : null;
+}
+function matchPageColour(p, cover) {
+  const c = sampleBackground(p, { x: cover.x, y: cover.y, w: cover.w, h: cover.h });
+  if (!c) { toast('Scroll that page into view first, then try again.'); return false; }
+  cover.fill = toHex(c);
+  return true;
+}
+const coverOf = (p, a) => (a && a.coverId ? annotById(p, a.coverId) : null);
+
 /* ---- editing existing page text ---- */
 async function ensureRuns(p) {
   if (S.runs.has(p.id)) return S.runs.get(p.id);
@@ -1422,10 +1485,13 @@ async function handleEditClick(p, pt) {
   if (!r) { toast('No editable text there. Try Add text to place new text.'); return; }
   S.hoverRun = null;
   const pad = 1;
-  const cover = newAnnot('cover', { x: r.x - pad, y: r.top - pad, w: r.w + pad * 2, h: r.bottom - r.top + pad * 2, fill: '#ffffff' });
+  const box = { x: r.x - pad, y: r.top - pad, w: r.w + pad * 2, h: r.bottom - r.top + pad * 2 };
+  const bg = sampleBackground(p, box);
+  const ink = sampleInk(p, { x: r.x, y: r.top, w: r.w, h: r.bottom - r.top }, bg);
+  const cover = newAnnot('cover', { ...box, fill: bg ? toHex(bg) : '#ffffff' });
   const text = newAnnot('text', {
     x: r.x, y: r.y - baselineOffset(r.family, r.size), text: r.str, size: Math.round(r.size * 10) / 10,
-    family: r.family, bold: r.bold, italic: r.italic, color: '#000000', editOf: r.str, coverId: cover.id,
+    family: r.family, bold: r.bold, italic: r.italic, color: ink ? toHex(ink) : '#000000', editOf: r.str, coverId: cover.id,
   });
   p.annots.push(cover, text);
   S.sel = { pid: p.id, id: text.id };
@@ -1545,6 +1611,11 @@ function updateProps() {
   $('#p-fillon').checked = fillOn;
   $('#p-fill').value = (src && src.fill && src.type !== 'highlight' && src.type !== 'cover' ? src.fill : st.fill);
   $('#p-arrow').checked = src && src.type === 'line' ? !!src.arrow : st.arrow;
+  const cv = src && src.type === 'cover' ? src : null;
+  if (cv) $('#p-cover').value = cv.fill || '#ffffff';
+  const linked = src && src.type === 'text' ? coverOf(selected()[0], src) : null;
+  $('#p-bg').hidden = !linked;
+  if (linked) $('#p-bgc').value = linked.fill || '#ffffff';
   const t = src && src.type === 'text' ? src : st;
   $('#p-family').value = t.family;
   $('#p-size').value = Math.round(t.size * 10) / 10;
@@ -1580,6 +1651,18 @@ function buildPropControls() {
   HL_SWATCHES.forEach((c) => { const b = document.createElement('button'); b.className = 'sw'; b.style.background = c; b.dataset.c = c; b.setAttribute('aria-label', 'Highlight ' + c); hl.appendChild(b); });
   hl.addEventListener('click', (e) => { const b = e.target.closest('.sw'); if (b) applyProp('hl', b.dataset.c); });
   $('#p-color').addEventListener('input', (e) => applyProp('color', e.target.value));
+  const setFill = (getCover, how) => {
+    const [p, a] = selected();
+    const cov = getCover(p, a);
+    if (!cov) return;
+    if (how === 'match') { if (!matchPageColour(p, cov)) return; } else cov.fill = how;
+    commit(); renderOverlay(p); updateProps();
+  };
+  const self = (p, a) => (a && a.type === 'cover' ? a : null);
+  $('#p-cover').addEventListener('change', (e) => setFill(self, e.target.value));
+  $('#p-match').addEventListener('click', () => setFill(self, 'match'));
+  $('#p-bgc').addEventListener('change', (e) => setFill(coverOf, e.target.value));
+  $('#p-bgmatch').addEventListener('click', () => setFill(coverOf, 'match'));
   $('#p-fillon').addEventListener('change', (e) => applyProp('fillOn', e.target.checked));
   $('#p-fill').addEventListener('input', (e) => { S.style.fillOn = true; $('#p-fillon').checked = true; applyProp('fill', e.target.value); });
   $('#p-width').addEventListener('change', (e) => applyProp('width', e.target.value));

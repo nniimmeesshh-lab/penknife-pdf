@@ -26,7 +26,7 @@ Works in current Chrome, Edge, Firefox and Safari on Windows, macOS, Linux and C
 | Area | Features |
 | --- | --- |
 | Reading | Zoom, fit to width, page thumbnails, select and copy text, password-protected files (view only) |
-| Editing text | Click any line of existing text and retype it. The original is covered and your text is placed over it in a matching font |
+| Editing text | Click any line of existing text and retype it. The original is covered with the page's own background colour and your text is placed over it in a matching font and colour |
 | Adding | Text boxes, highlight, freehand draw, rectangle, ellipse, line and arrow, images, drawn signature |
 | Pages | Rotate, delete, drag to reorder, insert blank pages, merge in another PDF |
 | Everything | Undo and redo, move and resize, keyboard shortcuts, light and dark themes |
@@ -84,7 +84,7 @@ The tests open the built file, drive the interface with the mouse and keyboard, 
 
 - **Cover is not redaction.** Edited text and the Cover tool hide the original with a white box. The original
   text is still inside the file and can be extracted. Do not use this to remove sensitive information.
-- Edited text is matched to Helvetica, Times or Courier (regular, bold, italic). The original font is not reused, and text colour is assumed to be black.
+- Edited text is matched to Helvetica, Times or Courier (regular, bold, italic). The original font is not reused. Background and text colour are sampled from the page, so flat colours blend in; over gradients, photos or patterns the cover shows as a flat box (use **Match page** or the colour picker to adjust it).
 - Password-protected PDFs can be viewed but not saved after editing.
 - Interactive form fields are preserved when you annotate, but cannot be filled in yet.
 - Only horizontal text can be edited. Rotated and vertical text is skipped.
